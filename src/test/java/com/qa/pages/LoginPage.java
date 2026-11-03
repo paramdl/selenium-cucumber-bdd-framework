@@ -2,6 +2,7 @@ package com.qa.pages;
 
 import com.qa.utils.WaitUtil;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 
 import java.util.List;
 
@@ -12,9 +13,15 @@ public class LoginPage extends BasePage {
     private static final By ALERT = By.cssSelector(".oxd-alert-content-text");
     private static final By FIELD_ERRORS = By.cssSelector(".oxd-input-field-error-message");
 
+    /** The public demo occasionally answers 500 for a moment; reload once before failing. */
     public LoginPage open() {
         open("/auth/login");
-        WaitUtil.waitForVisible(USERNAME);
+        try {
+            WaitUtil.waitForVisible(USERNAME);
+        } catch (TimeoutException firstTry) {
+            driver.navigate().refresh();
+            WaitUtil.waitForVisible(USERNAME);
+        }
         return this;
     }
 
