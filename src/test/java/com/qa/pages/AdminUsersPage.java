@@ -10,6 +10,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Admin > User Management > System Users. */
 public class AdminUsersPage extends BasePage {
@@ -18,6 +20,9 @@ public class AdminUsersPage extends BasePage {
     private static final By ROWS = By.cssSelector(".oxd-table-body .oxd-table-card");
     private static final By LOADER = By.cssSelector(".oxd-loading-spinner");
     private static final By TOAST = By.cssSelector(".oxd-toast");
+
+    private static final Pattern COUNT_PATTERN = Pattern.compile("\\((\\d+)\\) Records? Found");
+    private static final int PAGE_SIZE = 50;
 
     // Column positions in the results table (0 is the row checkbox).
     private static final int USERNAME_COL = 1;
@@ -56,6 +61,24 @@ public class AdminUsersPage extends BasePage {
             }
         }
         WaitUtil.waitForInvisibility(LOADER);
+        waitForRowsToMatchCount();
+    }
+
+    /**
+     * The count label and the rows render separately. Wait until the label shows a result and the table holds
+     * that many rows (the page shows at most 50), so a fast reader never sees the empty in-between state.
+     */
+    private void waitForRowsToMatchCount() {
+        new WebDriverWait(driver, Duration.ofSeconds(20))
+                .ignoring(StaleElementReferenceException.class)
+                .until(d -> {
+                    String label = d.findElement(RESULT_COUNT).getText().trim();
+                    if (label.equals("No Records Found")) return true;
+                    Matcher m = COUNT_PATTERN.matcher(label);
+                    if (!m.find()) return false;
+                    int expected = Math.min(Integer.parseInt(m.group(1)), PAGE_SIZE);
+                    return d.findElements(ROWS).size() == expected;
+                });
     }
 
     public String getResultCountText() {
